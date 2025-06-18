@@ -1,3 +1,9 @@
+# ===============================
+# FANUC Robot Backup Tool (CLI)
+# Author: Chase Kubiac
+# License: MIT
+# ===============================
+
 import os
 import sys
 import json
@@ -8,28 +14,43 @@ from threading import Thread
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn, SpinnerColumn
 from colorama import init, Fore, Style
 
+# Initialize terminal color formatting
 init(autoreset=True)
+
+# File where job configurations are stored
 CONFIG_FILE = "job_configs.json"
 
+# ----------------------------------------
+# UI: Print script header on launch
+# ----------------------------------------
 def print_header():
     print(Style.BRIGHT + Fore.CYAN + "\n" + " FANUC ROBOT BACKUP TOOL ".center(60))
     print(Fore.YELLOW + "  Use 'HELP' for instructions, 'CONFIG' to update settings")
     print(Fore.CYAN + "=" * 60 + "\n")
 
+# ----------------------------------------
+# Load saved job configurations from file
+# ----------------------------------------
 def load_configs():
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r") as f:
             return json.load(f)
     return {}
 
+# ----------------------------------------
+# Save current job configuration to file
+# ----------------------------------------
 def save_configs(data):
     with open(CONFIG_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
+# ----------------------------------------
+# Ask user for all needed config values (if new job)
+# ----------------------------------------
 def ask_config(job, configs):
     print(Fore.YELLOW + "\n[CONFIG] No saved configuration for this job.")
 
-    # === Backup Folder ===
+    # Ask for folder path until valid or "exit"
     while True:
         folder = input("Enter backup folder path: ").strip()
         if folder.lower() == "exit":
@@ -40,7 +61,7 @@ def ask_config(job, configs):
             break
         print(Fore.RED + "[✖] Folder doesn't exist.\n")
 
-    # === Robot IPs and Numbers ===
+    # Ask for robot IPs and numbers
     while True:
         ips = input("Enter robot IPs (last octets or full IPs): ").strip()
         if ips.lower() == "exit":
@@ -59,7 +80,7 @@ def ask_config(job, configs):
             continue
         break
 
-    # === Backup Type ===
+    # Ask for backup type
     print("\nBackup type:\n1 - Full MD\n2 - AOA")
     while True:
         t = input("Choice [1/2]: ").strip()
@@ -71,11 +92,15 @@ def ask_config(job, configs):
             btype = "MD" if t == "1" else "AOA"
             break
 
+    # Save and return new job config
     config = {"folder": folder, "ips": ips, "nums": nums, "type": btype}
     configs[job] = config
     save_configs(configs)
     return config
 
+# ----------------------------------------
+# View/edit/delete previously saved jobs
+# ----------------------------------------
 def edit_configs(configs):
     while True:
         if not configs:
@@ -120,8 +145,11 @@ def edit_configs(configs):
         else:
             print(Fore.RED + "Invalid action.\n")
 
+# ----------------------------------------
+# FTP connection and backup per robot thread
+# ----------------------------------------
 def ftp_backup(ip, rnum, dest_folder, btype, task_id, progress, summary):
-    retry = 2
+    retry = 2  # Retry once on failure
     while retry:
         try:
             ftp = FTP(ip, timeout=30)
@@ -135,7 +163,7 @@ def ftp_backup(ip, rnum, dest_folder, btype, task_id, progress, summary):
 
             total = len(files)
             progress.update(task_id, total=total)
-
+            # Download files via FTP
             for name in files:
                 with open(os.path.join(r_path, name), "wb") as f:
                     ftp.retrbinary("RETR " + name, f.write)
@@ -152,6 +180,9 @@ def ftp_backup(ip, rnum, dest_folder, btype, task_id, progress, summary):
                     log.write(f"[{datetime.now()}] R{rnum} ({ip}): {str(e)}\n")
             progress.stop_task(task_id)
 
+# ----------------------------------------
+# Main loop — handles job entry and triggers backups
+# ----------------------------------------
 def main():
     print_header()
     configs = load_configs()
@@ -180,12 +211,13 @@ def main():
         print(f"    R{cfg['nums'][i]} → {ip}")
     print(f"    Type: {cfg['type']}\n")
 
+    # Create output folder based on timestamp
     timestamp = datetime.now().strftime("%Y-%m-%d_%H%M")
     job_folder = os.path.join(cfg["folder"], f"Job{job}_{timestamp}")
     os.makedirs(job_folder, exist_ok=True)
     print(Fore.GREEN + f"[✓] Saving to: {job_folder}\n")
 
-    summary = []
+    summary = []  # Results per robot
     progress = Progress(
         SpinnerColumn(),
         TextColumn("[bold green]{task.fields[robot]}"),
@@ -195,9 +227,10 @@ def main():
     )
     threads = []
 
+    # Start parallel FTP threads per robot
     with progress:
         for ip, r in zip(cfg["ips"], cfg["nums"]):
-            task_id = progress.add_task(f"Backing up", robot=f"R{r}", total=100)
+            task_id = progress.add_task("Backing up", robot=f"R{r}", total=100)
             t = Thread(target=ftp_backup, args=(ip, r, job_folder, cfg["type"], task_id, progress, summary))
             threads.append(t)
             t.start()
@@ -205,6 +238,7 @@ def main():
         for t in threads:
             t.join()
 
+    # Print results
     print("\nBackup Summary:\n----------------")
     for result in summary:
         print(f"{result['robot']} - {result['status']}")
@@ -212,6 +246,9 @@ def main():
     print(Fore.GREEN + "\n[✓] All backups completed.\n")
     sys.exit(0)
 
+# ----------------------------------------
+# Run safely — catch CTRL+C cleanly
+# ----------------------------------------
 if __name__ == "__main__":
     try:
         main()
