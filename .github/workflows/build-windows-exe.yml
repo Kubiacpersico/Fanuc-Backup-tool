@@ -1,0 +1,33 @@
+name: Build EXE on Windows
+
+on:
+  push:
+    paths:
+      - '**.py'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        pip install pyinstaller colorama rich
+
+    - name: Build EXE with PyInstaller
+      run: |
+        pyinstaller --onefile fanuc_backup.py
+
+    - name: Upload EXE artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: fanuc_backup.exe
+        path: dist/fanuc_backup.exe
