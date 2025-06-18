@@ -2,7 +2,6 @@
 # FANUC Robot Backup Tool (CLI)
 # Author: Chase Kubiac
 # License: MIT
-
 # ===============================
 
 import os
