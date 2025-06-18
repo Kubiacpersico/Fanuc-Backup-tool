@@ -4,13 +4,12 @@ import json
 import time
 from datetime import datetime
 from ftplib import FTP
-from threading import Thread, Lock
+from threading import Thread
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn, SpinnerColumn
 from colorama import init, Fore, Style
 
 init(autoreset=True)
 CONFIG_FILE = "job_configs.json"
-lock = Lock()
 
 def print_header():
     print(Style.BRIGHT + Fore.CYAN + "\n" + " FANUC ROBOT BACKUP TOOL ".center(60))
@@ -127,23 +126,20 @@ def ftp_backup(ip, rnum, dest_folder, btype, task_id, progress, summary):
         try:
             ftp = FTP(ip, timeout=30)
             ftp.login()
-            ftp.cwd("md:")
+            ftp.cwd("mdb:" if btype == 'AOA' else "md:")
             files = ftp.nlst()
             files = [f for f in files if not f.startswith(".")]
-
-            if btype == "AOA":
-                files = [f for f in files if f.lower().endswith((".vr", ".sv", ".dg", ".tp", ".ls", ".cm", ".cf", ".md", ".db"))]
 
             r_path = os.path.join(dest_folder, f"R{rnum}")
             os.makedirs(r_path, exist_ok=True)
 
             total = len(files)
             progress.update(task_id, total=total)
-            for i, name in enumerate(files, 1):
+
+            for name in files:
                 with open(os.path.join(r_path, name), "wb") as f:
                     ftp.retrbinary("RETR " + name, f.write)
                 progress.update(task_id, advance=1)
-                time.sleep(0.01)
 
             ftp.quit()
             summary.append({"robot": f"R{rnum}", "status": "Success"})
