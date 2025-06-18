@@ -3,7 +3,8 @@ name: Build EXE on Windows
 on:
   push:
     paths:
-      - '**.py'
+      - '**.py'  # Only run on .py file changes
+  workflow_dispatch:  # Allow manual trigger
 
 jobs:
   build:
@@ -27,7 +28,7 @@ jobs:
         pyinstaller --onefile fanuc_backup.py
 
     - name: Upload EXE artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: fanuc_backup.exe
         path: dist/fanuc_backup.exe
