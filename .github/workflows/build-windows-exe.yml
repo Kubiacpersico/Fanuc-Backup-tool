@@ -1,34 +1,34 @@
-name: Build EXE on Windows
+name: Build EXE
 
 on:
   push:
-    paths:
-      - '**.py'  # Only run on .py file changes
-  workflow_dispatch:  # Allow manual trigger
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+    - name:  Clone Repo
+      uses: actions/checkout@v4
 
-    - name: Setup Python
-      uses: actions/setup-python@v4
+    - name:  Set up Python
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
-    - name: Install dependencies
-      run: |
-        pip install pyinstaller colorama rich
+    - name:  Install PyInstaller
+      run: pip install pyinstaller
 
-    - name: Build EXE with PyInstaller
-      run: |
-        pyinstaller --onefile fanuc_backup.py
+    - name:  List files (debug)
+      run: dir
 
-    - name: Upload EXE artifact
+    - name: ⚙ Build EXE with PyInstaller
+      run: pyinstaller --onefile fanuc_backup.py
+
+    - name:  Upload built EXE
       uses: actions/upload-artifact@v4
       with:
-        name: fanuc_backup.exe
+        name: fanuc-backup-tool
         path: dist/fanuc_backup.exe
