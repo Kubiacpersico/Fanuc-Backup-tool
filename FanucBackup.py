@@ -16,7 +16,7 @@ from colorama import init, Fore, Style
 
 # Initialize terminal color formatting
 init(autoreset=True)
-
+ 
 # File where job configurations are stored
 CONFIG_FILE = "job_configs.json"
 
