@@ -3,31 +3,34 @@ name: Build EXE on Windows
 on:
   push:
     paths:
-      - '**.py'  # Only run on .py file changes
-  workflow_dispatch:  # Allow manual trigger
+      - '**.py'         # Trigger only on .py changes
+  workflow_dispatch:     # Allow manual trigger via GitHub UI
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout repository
+    - name:  Checkout repository
       uses: actions/checkout@v3
 
-    - name: Setup Python
+    - name:  Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
 
-    - name: Install dependencies
+    - name:  Install dependencies
       run: |
         pip install pyinstaller colorama rich
 
-    - name: Build EXE with PyInstaller
+    - name:  Show current files (debug)
+      run: dir
+
+    - name: 🛠 Build EXE with PyInstaller
       run: |
         pyinstaller --onefile fanuc_backup.py
 
-    - name: Upload EXE artifact
+    - name:  Upload EXE as artifact
       uses: actions/upload-artifact@v4
       with:
         name: fanuc_backup.exe
