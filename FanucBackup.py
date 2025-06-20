@@ -1,8 +1,6 @@
 # =====================================
-# FANUC Robot Backup Tool (Minimal Clean)
+# FANUC Robot Backup Tool (Clean Version)
 # Author: Chase Kubiac
-# No logging, no extra files, just terminal output
-# Supports optional FTP username and password per job config
 # =====================================
 
 import os
@@ -24,26 +22,10 @@ init(autoreset=True)
 CONFIG_FILE = "job_configs.json"
 HEADLESS = "--headless" in sys.argv
 
-# ---------- Decorators ----------
-# Adds graceful 'exit' handling to user input prompts
-def exit_check(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        val = func(*args, **kwargs).strip()
-        if val.lower() == "exit":
-            print(Fore.CYAN + "\n[↩] Exiting to main menu.\n")
-            main()
-            sys.exit()
-        return val
-    return wrapper
-
-# ---------- Utils ----------
 def print_header():
     print(Style.BRIGHT + Fore.CYAN + "\n" + " FANUC ROBOT BACKUP TOOL ".center(60))
     print(Fore.YELLOW + "  Use 'HELP' for instructions, 'CONFIG' to update settings")
     print(Fore.CYAN + "=" * 60 + "\n")
-
-# Load/save config files
 
 def load_configs():
     try:
@@ -56,34 +38,30 @@ def save_configs(data):
     with open(CONFIG_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-# Ping test for robot IP
-
 def is_online(ip):
-    if not re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", ip):
+    if not re.match(r"^\d{1,3}(\.\d{1,3}){3}$", ip):
         return False
     cmd = ["ping", "-n" if platform.system() == "Windows" else "-c", "1", ip]
     return subprocess.call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
-
-# Normalize IPs (expand 20 → 192.168.1.20)
 
 def validate_ip_list(ips_str):
     parsed_ips = []
     for ip_part in ips_str.split():
         full_ip = ip_part if "." in ip_part else f"192.168.1.{ip_part}"
-        if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", full_ip):
+        if re.match(r"^\d{1,3}(\.\d{1,3}){3}$", full_ip):
             parsed_ips.append(full_ip)
     return parsed_ips
 
-# ---------- Config Setup ----------
-@exit_check
 def get_input(prompt):
-    return input(prompt)
-
-# Create new config or prompt user to define one
+    val = input(prompt).strip()
+    if val.lower() == "exit":
+        print(Fore.CYAN + "\n[↩] Exiting to main menu.\n")
+        main()
+        sys.exit()
+    return val
 
 def ask_config(job, configs):
     print(Fore.YELLOW + "\n[CONFIG] No saved configuration for this job.")
-
     while True:
         folder = get_input("Enter backup folder path: ")
         if os.path.isdir(folder):
@@ -105,7 +83,6 @@ def ask_config(job, configs):
             btype = "MD" if t == "1" else "AOA"
             break
 
-    # Optional FTP credentials
     user = get_input("FTP username (leave blank for anonymous): ")
     password = get_input("FTP password (leave blank for anonymous): ")
 
@@ -114,28 +91,41 @@ def ask_config(job, configs):
     save_configs(configs)
     return config
 
-# Modify existing saved config jobs
-
 def edit_configs(configs):
-    if not configs:
+    jobs = [j for j in configs.keys() if isinstance(configs[j], dict) and "folder" in configs[j]]
+    if not jobs:
         print(Fore.RED + "[!] No saved jobs to edit.\n")
         return
 
-    jobs = list(configs.keys())
     print(Fore.CYAN + "\nSaved Jobs:")
     for i, job in enumerate(jobs, 1):
         print(f"{i}. {job}")
+    print(f"{len(jobs)+1}. Return to main menu")
 
-    sel = input("Select job number to edit: ").strip()
-    if not sel.isdigit() or not (1 <= int(sel) <= len(jobs)):
+    sel = input("Select job number to edit/delete: ").strip()
+    if not sel.isdigit() or not (1 <= int(sel) <= len(jobs)+1):
         print(Fore.RED + "Invalid selection.\n")
+        return
+    if int(sel) == len(jobs)+1:
         return
 
     key = jobs[int(sel) - 1]
     cfg = configs[key]
 
-    print(Fore.YELLOW + f"\nEditing Job {key}. Leave blank to keep current value.")
+    print(Fore.YELLOW + f"\nEditing Job {key}.\n1 = Edit\n2 = Delete\n3 = Cancel")
+    choice = input("Your choice: ").strip()
 
+    if choice == "2":
+        confirm = input(f"Are you sure you want to delete job {key}? [y/N]: ").lower()
+        if confirm == "y":
+            del configs[key]
+            save_configs(configs)
+            print(Fore.GREEN + f"[✓] Job {key} deleted.\n")
+        return
+    elif choice != "1":
+        return
+
+    print(Fore.YELLOW + "Leave field blank to keep current value.")
     folder = input(f"Backup folder [{cfg['folder']}]: ").strip()
     if folder:
         cfg['folder'] = folder
@@ -152,7 +142,6 @@ def edit_configs(configs):
     if type_input in ["MD", "AOA"]:
         cfg['type'] = type_input
 
-    # Allow updating FTP credentials
     user_input = input(f"FTP username [{cfg.get('user','')}]: ").strip()
     pass_input = input(f"FTP password [{cfg.get('pass','')}]: ").strip()
     cfg['user'] = user_input if user_input else cfg.get('user','')
@@ -160,9 +149,6 @@ def edit_configs(configs):
 
     save_configs(configs)
     print(Fore.GREEN + "[✓] Config updated.\n")
-
-# ---------- FTP Backup ----------
-# Handles FTP connection and file retrieval from a single robot
 
 def ftp_backup(ip, rnum, dest_folder, btype, task_id, progress, summary, user, password):
     r_path = os.path.join(dest_folder, f"R{rnum}")
@@ -177,7 +163,7 @@ def ftp_backup(ip, rnum, dest_folder, btype, task_id, progress, summary, user, p
         files_downloaded = 0
         try:
             ftp = FTP(ip, timeout=30)
-            ftp.login(user=user or '', passwd=password or '')  # Use credentials if provided
+            ftp.login(user=user or '', passwd=password or '')
             ftp.cwd("mdb:" if btype == 'AOA' else "md:")
             files = [f for f in ftp.nlst() if not f.startswith(".")]
 
@@ -197,7 +183,8 @@ def ftp_backup(ip, rnum, dest_folder, btype, task_id, progress, summary, user, p
         except Exception as e:
             progress.stop_task(task_id)
             if files_downloaded > 0:
-                if HEADLESS or input(f"R{rnum} dropped during backup. Retry? [y/N]: ").lower() == "y":
+                retry = "y" if HEADLESS else input(f"R{rnum} dropped during backup. Retry? [y/N]: ").lower()
+                if retry == "y":
                     try:
                         for f in os.listdir(r_path):
                             os.remove(os.path.join(r_path, f))
@@ -214,19 +201,52 @@ def ftp_backup(ip, rnum, dest_folder, btype, task_id, progress, summary, user, p
                 summary.append({"robot": f"R{rnum}", "status": "Failed", "error": str(e)[:60]})
                 return
 
-# ---------- Main ----------
 def main():
     print_header()
     configs = load_configs()
-    choice = input("[?] Enter Job Number or Command: ").strip()
+    choice = input("[?] Enter Job Number or Command: ").strip().lower()
 
-    if choice.lower() == "help":
-        print(Fore.YELLOW + "\nINSTRUCTIONS:\n- Enter job number to start backup\n- 'CONFIG' to edit\n- 'EXIT' to quit\n")
+    if choice == "help":
+        print(Fore.YELLOW + """
+FANUC BACKUP TOOL - FULL HELP
+=============================
+
+▶ WHAT THIS DOES
+This tool backs up MD or AOA data from one or more FANUC robots using FTP.
+
+▶ BASIC USAGE
+1. Type a job number (e.g., 1, 2, etc.) to begin backup
+2. If the job is new, you will be prompted to:
+   - Choose a folder to save the backup
+   - Enter robot IPs or last octets (e.g., 20 → 192.168.1.20)
+   - Assign robot numbers (R1, R2, etc.)
+   - Choose backup type (MD or AOA)
+   - Enter FTP login (optional)
+
+▶ MENU COMMANDS
+- CONFIG → View or edit existing job configs
+- HELP → View this help message
+- EXIT → Quit the program
+
+▶ FEATURES
+- Automatically creates timestamped job folders
+- Retries partial backups if the robot drops connection
+- Deletes empty folders if no robots backed up
+- Allows multiple robots per job
+- Accepts short-form IPs like "20" → "192.168.1.20"
+
+▶ NOTES
+- MD is typically for system files; AOA is a full all-of-above backup
+- FTP must be enabled on the robot
+- If anonymous login fails, try setting user/pass in CONFIG
+""")
         main(); return
-    if choice.lower() == "config":
+
+    if choice == "config":
         edit_configs(configs)
         main(); return
-    if choice.lower() == "exit":
+
+    if choice == "exit":
         print(Fore.CYAN + "\nExiting...\n")
         sys.exit()
 
@@ -273,7 +293,6 @@ def main():
         else:
             print(Fore.RED + f"{result['robot']} - {result['status']} ({result.get('error', 'Error')})")
 
-    # Remove job folder if all failed
     if all(entry['status'] != 'Success' for entry in summary):
         try:
             os.rmdir(job_folder)
