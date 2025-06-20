@@ -1,0 +1,31 @@
+[33me149b4e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Added optional FTP login support to job configs; auto-delete job folder if all robots fail
+[33mbfaeff8[m[33m ([m[1;32mbackup-before-clean[m[33m)[m Merge branch 'main' of https://github.com/Kubiacpersico/Fanuc-Backup-tool
+[33mf7dd545[m final
+[33m04a4862[m Delete .github/workflows/python-app.yml
+[33m29dd8a2[m Merge branch 'main' of https://github.com/Kubiacpersico/Fanuc-Backup-tool
+[33mad9689f[m ddd
+[33m842e957[m Update build-windows-exe.yml
+[33m385fb1c[m Merge branch 'main' of https://github.com/Kubiacpersico/Fanuc-Backup-tool
+[33mce81ac5[m ff
+[33mf6017ce[m Update build-windows-exe.yml
+[33mf3aa697[m Merge branch 'main' of https://github.com/Kubiacpersico/Fanuc-Backup-tool
+[33me6e5594[m push
+[33me84ddae[m Update build-windows-exe.yml
+[33m3b00990[m Merge branch 'main' of https://github.com/Kubiacpersico/Fanuc-Backup-tool
+[33m870a155[m Minor change to test triggers
+[33m5996998[m Update build-windows-exe.yml
+[33m513de49[m Create python-app.yml
+[33m83ac256[m Merge branch 'main' of https://github.com/Kubiacpersico/Fanuc-Backup-tool
+[33m7bc8c5f[m push
+[33mc69c7e8[m Update build-windows-exe.yml
+[33m6ce88c4[m Merge branch 'main' of https://github.com/Kubiacpersico/Fanuc-Backup-tool
+[33m6d736df[m push
+[33m62afceb[m Create build-windows-exe.yml
+[33mf2f4f96[m Merge branch 'main' of https://github.com/Kubiacpersico/Fanuc-Backup-tool
+[33mdd0c877[m Code cleanup
+[33mdb7dc2c[m Added vs config files and temp dirs
+[33m1b27e6b[m Added comments to the FanucBackup.py script to explain its functionality and usage.
+[33m48780f5[m Added Requirement.txt
+[33m5dd72ee[m first drop
+[33md498bae[m Create README.md
+[33maea1d8b[m Initial commit
