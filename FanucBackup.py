@@ -1,5 +1,5 @@
 # =====================================
-# FANUC Robot Backup Tool (Clean Version)
+# FANUC Robot Backup Tool (Version 3.0.1)
 # Author: Chase Kubiac
 # =====================================
 
@@ -25,6 +25,7 @@ HEADLESS = "--headless" in sys.argv
 def print_header():
     print(Style.BRIGHT + Fore.CYAN + "\n" + " FANUC ROBOT BACKUP TOOL ".center(60))
     print(Fore.YELLOW + "  Use 'HELP' for instructions, 'CONFIG' to update settings")
+    print(Fore.YELLOW + "  Version 3.0.1")
     print(Fore.CYAN + "=" * 60 + "\n")
 
 def load_configs():
